@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
-const clientId = process.env.CLIENT_ID;
+const clientId = "1396898295594483753"; 
 rpc.register(clientId);
 
 const client = new rpc.Client({ transport: "ipc" });
