@@ -1,18 +1,52 @@
 {
   "name": "figtime",
   "version": "1.0.0",
+  "description": "Discord Rich Presence for Figma — by Krutik",
   "main": "index.js",
+  "type": "module",
+  "author": "Krutik Raut",
+  "license": "MIT",
   "scripts": {
-    "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron .",
+    "dist": "electron-builder"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "active-win": "^8.2.1",
+    "auto-launch": "^5.0.6",
     "discord-rpc": "^4.0.1",
     "dotenv": "^17.2.0"
+  },
+  "devDependencies": {
+    "electron": "^37.2.3",
+    "electron-builder": "^26.0.19"
+  },
+  "build": {
+    "appId": "com.infinitylinkage.figtime",
+    "productName": "Figtime",
+    "files": [
+      "**/*",
+      "!node_modules/.cache"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg"]
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "extraResources": [
+      {
+        "from": "assets/",
+        "to": "assets",
+        "filter": ["**/*"]
+      }
+    ]
   }
 }
