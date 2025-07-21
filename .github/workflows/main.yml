@@ -2,31 +2,39 @@ name: Build Figtime App
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: windows-latest
 
-    steps:
-      - uses: actions/checkout@v3
+    strategy:
+      matrix:
+        node-version: [20.x]
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         run: npm install
 
-      - name: Rebuild native modules for Electron
-        run: npx electron-rebuild
+      - name: Build with Electron Packager
+        run: |
+          npx electron-packager . figtime \
+            --platform=win32 \
+            --arch=x64 \
+            --out=dist \
+            --overwrite
 
-      - name: Build the app
-        run: npx electron-builder --win --x64
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v4
         with:
           name: figtime-win
-          path: dist/
+          path: dist/figtime-win32-x64/
