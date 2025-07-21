@@ -7,10 +7,11 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
+        os: [windows-latest, macos-latest]
         node-version: [20.x]
 
     steps:
@@ -27,10 +28,15 @@ jobs:
 
       - name: Build with Electron Packager
         run: |
-          npx electron-packager . figtime --platform=win32 --arch=x64 --out=dist --overwrite
+          npx electron-packager . figtime `
+            --platform=${{ matrix.os == 'windows-latest' && 'win32' || 'darwin' }} `
+            --arch=x64 `
+            --out=dist `
+            --overwrite
 
-      - name: Upload Windows Build
+      - name: Upload Build
         uses: actions/upload-artifact@v4
         with:
-          name: figtime-win
-          path: dist/figtime-win32-x64/
+          name: ${{ matrix.os == 'windows-latest' && 'figtime-win' || 'figtime-mac' }}
+          path: |
+            dist/figtime-${{ matrix.os == 'windows-latest' && 'win32' || 'darwin' }}-x64/
