@@ -27,15 +27,15 @@ jobs:
       - name: Install Electron Packager
         run: npm install --save-dev @electron/packager
 
-      - name: Build app
-        run: |
-          npx @electron/packager . figtime \
-          --platform=${{ matrix.os == 'windows-latest' && 'win32' || 'darwin' }} \
-          --arch=${{ matrix.os == 'macos-latest' && 'arm64' || 'x64' }} \
-          --out=dist \
-          --overwrite
+      - name: Build app for Windows
+        if: matrix.os == 'windows-latest'
+        run: npx @electron/packager . figtime --platform=win32 --arch=x64 --out=dist --overwrite
 
-      - name: Upload build artifact
+      - name: Build app for macOS
+        if: matrix.os == 'macos-latest'
+        run: npx @electron/packager . figtime --platform=darwin --arch=arm64 --out=dist --overwrite
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: figtime-${{ matrix.os }}
