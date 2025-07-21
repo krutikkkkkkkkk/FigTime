@@ -27,11 +27,7 @@ jobs:
 
       - name: Build with Electron Packager
         run: |
-          npx electron-packager . figtime \
-            --platform=win32 \
-            --arch=x64 \
-            --out=dist \
-            --overwrite
+          npx electron-packager . figtime --platform=win32 --arch=x64 --out=dist --overwrite
 
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
