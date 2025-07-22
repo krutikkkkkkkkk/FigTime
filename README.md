@@ -160,7 +160,7 @@ FigTime/
 
 ## License
 
-This project is licensed under the ISC License.
+This project is licensed under the  [MIT License](LICENSE). Feel free to use, modify, and distribute this code as per the terms of the license. 
 
 ## Support
 
@@ -172,3 +172,5 @@ If you encounter any issues or have questions:
 ---
 
 **Note**: This application requires Discord Desktop to be running and may need appropriate permissions to monitor system processes on your operating system.
+
+## Follow me on X (formerly Twitter) for updates and support: [@krutikkkkkkkkk](https://x.com/krutikkkkkkkkk)
