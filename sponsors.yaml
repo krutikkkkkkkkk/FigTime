@@ -1,0 +1,24 @@
+sponsors:
+  - name: Vercel
+    url: https://vercel.com
+    logo: https://assets.vercel.com/image/upload/front/assets/design/vercel-triangle-black.svg
+    tier: platinum
+    description: Deploy your frontend with the speed of light.
+
+  - name: Supabase
+    url: https://supabase.com
+    logo: https://supabase.com/new/images/supabase-logo-icon.svg
+    tier: gold
+    description: The open source Firebase alternative.
+
+  - name: Figma
+    url: https://figma.com
+    logo: https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg
+    tier: silver
+    description: Collaborative interface design tool.
+
+  - name: Your Company Here
+    url: https://example.com
+    logo: /assets/sponsors/your-company-logo.svg
+    tier: bronze
+    description: Supporting open source innovation.
