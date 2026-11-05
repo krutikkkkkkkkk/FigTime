@@ -1,6 +1,6 @@
 {
   "name": "figtime",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Discord Rich Presence for Figma — by Krutik",
   "main": "index.js",
   "type": "module",
@@ -11,14 +11,14 @@
     "dist": "electron-builder"
   },
   "dependencies": {
-    "active-win": "^8.2.1",
     "auto-launch": "^5.0.6",
     "discord-rpc": "^4.0.1",
-    "dotenv": "^17.2.0"
+    "dotenv": "^18.0.9",
+    "get-windows": "^10.0.0"
   },
   "devDependencies": {
-    "electron": "^37.2.3",
-    "electron-builder": "^26.0.19"
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "com.infinitylinkage.figtime",
@@ -32,10 +32,14 @@
     },
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -45,8 +49,15 @@
       {
         "from": "assets/",
         "to": "assets",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ]
+  },
+  "allowScripts": {
+    "electron@45.2.3": true,
+    "get-windows@10.0.0": true,
+    "electron-winstaller@5.4.0": true
   }
 }

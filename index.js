@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import rpc from "discord-rpc";
-import activeWin from "active-win";
+import { activeWindow as activeWin } from "get-windows";
 import { app, Tray, Menu } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -10,9 +10,10 @@ import AutoLaunch from 'auto-launch';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
-const clientId = "1396898295594483753"; 
+// CLIENT_ID from .env overrides the bundled Discord application ID
+const clientId = process.env.CLIENT_ID || "1396898295594483753";
 rpc.register(clientId);
 
 const client = new rpc.Client({ transport: "ipc" });
@@ -22,8 +23,6 @@ let tray = null;
 let startTimestamp = new Date();
 let lastActivity = null;
 let hasEverSetActivity = false;
-let lastFigmaCheck = 0; // Track when we last saw Figma
-const FIGMA_TIMEOUT = 30000; // Clear after 30 seconds of no Figma detection
 
 app.whenReady().then(() => {
   tray = new Tray(path.join(__dirname, 'assets', 'icon.png'));
@@ -172,8 +171,7 @@ function extractProjectName(title) {
 async function updatePresence() {
   try {
     const window = await activeWin();
-    const currentTime = Date.now();
-    
+
     // Debug logging for browser detection
     if (window?.owner?.name) {
       const appName = window.owner.name.toLowerCase();
@@ -209,17 +207,12 @@ async function updatePresence() {
     
     if (isDesktop || isBrowser) {
       // We found active Figma - update presence
-      lastFigmaCheck = currentTime;
       const projectName = extractProjectName(window.title);
       const platform = isDesktop ? 'Desktop' : 'Browser';
-      
-      // Check if this is a new activity (only platform matters for timestamp reset)
       const activityKey = `${projectName}-${platform}`;
-      const platformKey = platform;
-      const isPlatformChange = lastActivity && !lastActivity.includes(platform);
-      
-      // Reset timestamp only for platform changes (Desktop <-> Browser)
-      if (isPlatformChange || !hasEverSetActivity) {
+
+      // Timer starts once per session and only restarts after Figma is closed
+      if (!hasEverSetActivity) {
         startTimestamp = new Date();
       }
       
@@ -250,13 +243,8 @@ async function updatePresence() {
           clearPresence();
           console.log('[⚠] Figma closed - presence cleared');
         }
-      } else if (currentTime - lastFigmaCheck > FIGMA_TIMEOUT) {
-        // Haven't seen active Figma for too long - probably minimized/background
-        if (hasEverSetActivity) {
-          clearPresence();
-          console.log('[⚠] No Figma activity detected for 30s - presence cleared');
-        }
       }
+      // Figma still open but not focused - keep the current presence and timer
     }
     
   } catch (error) {
@@ -282,8 +270,6 @@ client.on("ready", () => {
   setInterval(updatePresence, 10000); // Check every 10 seconds
 });
 
-client.login({ clientId }).catch(console.error);
-
 // Handle app events
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -292,7 +278,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (Tray.getAllTrays().length === 0) {
+  if (!tray || tray.isDestroyed()) {
     tray = new Tray(path.join(__dirname, 'assets', 'icon.png'));
   }
 });

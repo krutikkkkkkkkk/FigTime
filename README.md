@@ -12,7 +12,7 @@ A Discord Rich Presence application that automatically displays your Figma activ
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v22 or higher)
 - Discord Desktop application
 - Figma Desktop app or web browser with Figma
 
