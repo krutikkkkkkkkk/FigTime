@@ -8,7 +8,9 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never"
   },
   "dependencies": {
     "auto-launch": "^5.0.6",
@@ -24,36 +26,47 @@
     "appId": "com.infinitylinkage.figtime",
     "productName": "Figtime",
     "files": [
-      "**/*",
-      "!node_modules/.cache"
+      "index.js",
+      "assets/**/*"
     ],
+    "asarUnpack": [
+      "node_modules/get-windows/**"
+    ],
+    "npmRebuild": false,
     "directories": {
-      "buildResources": "assets"
+      "buildResources": "assets",
+      "output": "dist"
     },
     "mac": {
       "category": "public.app-category.developer-tools",
+      "identity": "-",
+      "hardenedRuntime": false,
       "target": [
-        "dmg"
-      ]
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "FigTime-${version}-mac-${arch}.${ext}"
     },
     "win": {
       "target": [
-        "nsis"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "FigTime-${version}-windows-setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    },
-    "extraResources": [
-      {
-        "from": "assets/",
-        "to": "assets",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ]
+    }
   },
   "allowScripts": {
     "electron@45.2.3": true,

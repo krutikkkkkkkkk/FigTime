@@ -1,176 +1,145 @@
 # FigTime 🎨
 
-A Discord Rich Presence application that automatically displays your Figma activity status on Discord.
+Show what you're designing in Figma on your Discord profile, automatically.
 
-## Features
+While you work, your Discord status shows:
 
-- **Automatic Detection**: Monitors both Figma Desktop app and browser tabs
-- **Smart Activity Tracking**: Shows current project name and platform (Desktop/Browser)
-- **Intelligent Clearing**: Automatically clears presence when Figma is closed or inactive
-- **Cross-Platform Support**: Works with Figma Desktop and web browsers
-- **Real-time Updates**: Updates every 5 seconds for accurate status
+- **Working on [your file name]**
+- **Figma Desktop** or **Figma Browser**
+- How long you've been working
 
-## Prerequisites
+It runs quietly in your system tray and clears your status when you close Figma.
 
-- Node.js (v22 or higher)
-- Discord Desktop application
-- Figma Desktop app or web browser with Figma
+## Download & install
 
-## Installation
+**[⬇ Download the latest version](https://github.com/krutikkkkkkkkk/FigTime/releases/latest)**
 
-1. Clone or download this repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the project root:
-   ```bash
-   CLIENT_ID=your_discord_application_id_here
-   ```
+Pick the file for your computer:
 
-## Setup
+| Your computer | File |
+|---|---|
+| Windows 10/11 | `FigTime-…-windows-setup.exe` |
+| Mac with Apple chip (M1/M2/M3/M4) | `FigTime-…-mac-arm64.dmg` |
+| Mac with Intel chip | `FigTime-…-mac-x64.dmg` |
 
-### Discord Application Setup
+Not sure which Mac you have? Apple menu → **About This Mac** → look for "Chip" (Apple) or "Processor" (Intel).
 
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application and give it a name (e.g., "FigTime")
-3. Go to the "General Information" tab and copy the **Application ID**
-4. Create a `.env` file in your project directory and add:
-   ```
-   CLIENT_ID=your_application_id_here
-   ```
-5. Go to "Rich Presence" → "Art Assets" and upload a Figma logo with the key name "figma"
+### Windows
 
-### Environment Variables
+1. Run `FigTime-…-windows-setup.exe`.
+2. Windows may show **"Windows protected your PC"**. This happens because FigTime isn't code-signed yet. Click **More info → Run anyway**.
+3. Finish the installer. FigTime starts and appears in your system tray (bottom-right, you may need to click the **^** arrow).
 
-Create a `.env` file with the following variables:
+### Mac
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `CLIENT_ID` | Your Discord Application ID | Yes |
+1. Open the `.dmg` and drag **Figtime** into **Applications**.
+2. Open Figtime from Applications. The first time, macOS will say it can't be opened because FigTime isn't from an identified developer.
+3. Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to the FigTime message. Confirm with your password.
+4. When asked, allow **Screen Recording** (System Settings → Privacy & Security → Screen Recording → turn on Figtime). FigTime only uses this to read window *titles*, which is how it gets your Figma file name. Without it, your status shows "Figma Project" instead of the file name.
+5. FigTime appears as an icon in your menu bar (top-right). It has no Dock icon.
 
-## Usage
+### Make sure Discord shows it
 
-1. Make sure Discord is running on your computer
-2. Ensure your `.env` file is properly configured
-3. Start FigTime:
-   ```bash
-   npm start
-   ```
-   or
-   ```bash
-   node index.js
-   ```
-4. Open Figma (either desktop app or in your browser)
-5. Your Discord status will automatically update to show your Figma activity!
+- Use the **Discord desktop app** (not Discord in a browser) and keep it running.
+- In Discord, go to **User Settings → Activity Privacy** and turn on **Share your detected activities with others**.
 
-## How It Works
+That's it — open Figma and your status updates within about 10 seconds.
 
-FigTime monitors your system for Figma activity in two ways:
+## Using FigTime
 
-1. **Active Window Detection**: Checks if the currently focused window is Figma
-2. **Process Detection**: Scans running processes for Figma instances
+- **It starts automatically** when you log in to your computer.
+- **Order doesn't matter.** Start Discord before or after FigTime; it connects on its own and reconnects if Discord restarts.
+- **Your status stays up** while Figma is open, even when you switch to other apps. It clears when you close Figma.
+- **To quit:** right-click (Windows) or click (Mac) the FigTime tray icon → **Quit Figtime**.
+- **To stop it starting at login:** Windows → Task Manager → Startup apps → disable Figtime. Mac → System Settings → General → Login Items → remove Figtime.
+- **To uninstall:** Windows → Settings → Apps → Figtime → Uninstall. Mac → drag Figtime from Applications to the Trash.
 
-When Figma activity is detected, it extracts the project name from the window title and displays:
-- **Details**: "Working on [Project Name]"
-- **State**: "Figma Desktop" or "Figma Browser"
-- **Duration**: How long you've been working on the current project
+### Supported browsers
 
-## Browser Support
-
-FigTime works with the following browsers:
-- Google Chrome
-- Mozilla Firefox
-- Microsoft Edge
-- Safari
-- Opera
-- Brave
-
-## Configuration
-
-The application uses environment variables for configuration. Create a `.env` file in the project root:
-
-```env
-CLIENT_ID=your_discord_application_id_here
-```
-
-Additional configurable parameters in `index.js`:
-
-- `FIGMA_TIMEOUT`: Time (in milliseconds) before clearing presence when no Figma activity is detected (default: 30 seconds)
-- Update interval: How often to check for activity (default: 5 seconds)
-
-## Discord Application Setup
-
-This project requires you to create your own Discord application:
-
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application and give it a name (e.g., "FigTime")
-3. Copy the Application ID from the "General Information" tab
-4. Add the Application ID to your `.env` file as `CLIENT_ID`
-5. Go to "Rich Presence" → "Art Assets" and upload a Figma icon with the key name "figma"
-
-The application will use your Discord Application ID from the environment variables to connect to Discord.
+Figma in Chrome, Edge, Firefox, Opera or Brave works, plus Safari and Arc on Mac. Your Figma tab needs to be the visible tab in its browser window; keeping Figma in its own window works best.
 
 ## Troubleshooting
 
-### "Discord not detected" error
-- Make sure Discord Desktop is running (not just the web version)
-- Try restarting Discord
-- Verify your `.env` file contains a valid `CLIENT_ID`
+**My status doesn't show up**
+- Check Discord's **Activity Privacy** setting (see above).
+- Make sure you're using the Discord desktop app, not the website.
+- Check FigTime is running (look for its icon in the tray / menu bar).
+- Click into your Figma window once so FigTime picks it up.
 
-### Activity not showing
-- Ensure Figma is the active/focused window
-- Check that the project has a proper title in Figma
-- Verify that Discord's activity status is enabled in Discord settings
-- Make sure your Discord application has the "figma" asset uploaded
+**It says "Figma Project" instead of my file name (Mac)**
+- Turn on **Screen Recording** for Figtime in System Settings → Privacy & Security, then quit and reopen FigTime.
 
-### Environment variable errors
-- Ensure your `.env` file is in the project root directory
-- Check that `CLIENT_ID` is properly set in the `.env` file
-- Restart the application after making changes to `.env`
+**Mac says FigTime "is damaged and can't be opened"**
+- Open Terminal and run `xattr -cr /Applications/Figtime.app`, then open it again.
 
-### Permission errors on Windows
-- Try running as administrator if you encounter PowerShell execution policy issues
-
-## Project Structure
-
-```
-FigTime/
-├── index.js          # Main application file
-├── package.json      # Node.js dependencies and scripts
-├── package-lock.json # Exact dependency versions
-├── .env              # Environment variables (create this)
-├── .gitignore        # Git ignore rules
-└── README.md         # This file
-```
-
-## Dependencies
-
-- **discord-rpc**: Enables Discord Rich Presence integration
-- **active-win**: Detects the currently active window
-- **dotenv**: Loads environment variables from .env file
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## License
-
-This project is licensed under the  [MIT License](LICENSE). Feel free to use, modify, and distribute this code as per the terms of the license. 
-
-## Support
-
-If you encounter any issues or have questions:
-1. Check the troubleshooting section above
-2. Make sure all prerequisites are installed
-3. Verify that Discord and Figma are running properly
+**Status disappears when I switch browser tabs**
+- FigTime can only see the visible tab of each browser window. Move Figma into its own browser window, or use the Figma desktop app.
 
 ---
 
-**Note**: This application requires Discord Desktop to be running and may need appropriate permissions to monitor system processes on your operating system.
+## For developers
 
-## Follow me on X (formerly Twitter) for updates and support: [@krutikkkkkkkkk](https://x.com/krutikkkkkkkkk)
+### Run from source
+
+Requires [Node.js](https://nodejs.org) 22 or newer.
+
+```bash
+git clone https://github.com/krutikkkkkkkkk/FigTime.git
+cd FigTime
+npm install
+npm start
+```
+
+FigTime uses a built-in Discord application ID, so no setup is needed. To use your own Discord application instead, create one in the [Discord Developer Portal](https://discord.com/developers/applications), upload a Figma logo under **Rich Presence → Art Assets** with the key `figma`, and put its Application ID in a `.env` file:
+
+```env
+CLIENT_ID=your_application_id
+```
+
+> Running `npm start` from VS Code's terminal? If you see `does not provide an export named 'Menu'`, the terminal has `ELECTRON_RUN_AS_NODE=1` set. Unset it or use a separate terminal.
+
+### Build installers locally
+
+```bash
+npm run dist:win   # Windows .exe installer (run on Windows)
+npm run dist:mac   # macOS .dmg for Apple chip + Intel (run on a Mac)
+```
+
+Output goes to `dist/`.
+
+### Publish a release
+
+Releases are built by GitHub Actions ([.github/workflows/main.yml](.github/workflows/main.yml)):
+
+1. Bump the version: `npm version 1.2.0` (updates `package.json` and creates the `v1.2.0` tag).
+2. Push it: `git push --follow-tags`.
+3. GitHub Actions builds the Windows and Mac installers and publishes them as a public release. The tag must match the `package.json` version or the build fails.
+
+Every push to `main` also builds installers, available as artifacts on the workflow run (not published).
+
+### How it works
+
+Every 10 seconds FigTime checks the focused window. If it's the Figma desktop app or a browser showing Figma, it reads the window title to get the file name and sends it to Discord over its local connection (Discord Rich Presence). When Figma isn't focused, it checks whether Figma is still open and keeps your status; once Figma is closed, it clears it.
+
+| Package | Purpose |
+|---|---|
+| [electron](https://www.electronjs.org) | Tray app and packaging |
+| [discord-rpc](https://www.npmjs.com/package/discord-rpc) | Discord Rich Presence |
+| [get-windows](https://www.npmjs.com/package/get-windows) | Reads the focused window |
+| [auto-launch](https://www.npmjs.com/package/auto-launch) | Start at login |
+| [dotenv](https://www.npmjs.com/package/dotenv) | Optional `.env` config |
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes and test them
+4. Open a pull request
+
+## License
+
+[MIT License](LICENSE). Feel free to use, modify, and distribute this code under its terms.
+
+## Support
+
+Found a bug? [Open an issue](https://github.com/krutikkkkkkkkk/FigTime/issues). Follow me on X for updates: [@krutikkkkkkkkk](https://x.com/krutikkkkkkkkk)

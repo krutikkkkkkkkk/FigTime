@@ -1,16 +1,24 @@
 name: Build FigTime App
 
+# Push to main -> build installers (downloadable from the run's artifacts)
+# Push a tag like v1.2.0 -> build installers AND publish a public GitHub Release
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            script: dist:win
+          - os: macos-latest
+            script: dist:mac
 
     steps:
       - name: Checkout code
@@ -20,23 +28,55 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
+      - name: Check tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$PKG_VERSION" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${PKG_VERSION}"
+            exit 1
+          fi
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Install Electron Packager
-        run: npm install --save-dev @electron/packager
+      - name: Build installers
+        run: npm run ${{ matrix.script }}
 
-      - name: Build app for Windows
-        if: matrix.os == 'windows-latest'
-        run: npx @electron/packager . figtime --platform=win32 --arch=x64 --out=dist --overwrite
-
-      - name: Build app for macOS
-        if: matrix.os == 'macos-latest'
-        run: npx @electron/packager . figtime --platform=darwin --arch=arm64 --out=dist --overwrite
-
-      - name: Upload artifact
+      - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
           name: figtime-${{ matrix.os }}
-          path: dist/figtime-*
+          path: |
+            dist/*.exe
+            dist/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" installers/* \
+            --title "FigTime $GITHUB_REF_NAME" \
+            --notes-file .github/release-notes.md \
+            --generate-notes

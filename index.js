@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import rpc from "discord-rpc";
-import { activeWindow as activeWin } from "get-windows";
-import { app, Tray, Menu } from 'electron';
+import { activeWindow as activeWin, openWindows } from "get-windows";
+import { app, Tray, Menu, nativeImage } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import AutoLaunch from 'auto-launch';
@@ -16,8 +16,26 @@ dotenv.config({ quiet: true });
 const clientId = process.env.CLIENT_ID || "1396898295594483753";
 rpc.register(clientId);
 
-const client = new rpc.Client({ transport: "ipc" });
+let client = null;
+let connected = false;
+let presenceTimer = null;
+let reconnectTimer = null;
+const RECONNECT_DELAY = 15000; // Retry Discord connection every 15 seconds
 let tray = null;
+
+function createTray() {
+  let icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png'));
+  if (process.platform === 'darwin') {
+    // Menu bar icons are ~18pt tall; the source icon is 512px
+    icon = icon.resize({ width: 18, height: 18 });
+  }
+  tray = new Tray(icon);
+  const menu = Menu.buildFromTemplate([
+    { label: 'Quit Figtime', click: () => app.quit() },
+  ]);
+  tray.setToolTip('Figtime is running');
+  tray.setContextMenu(menu);
+}
 
 // Global variables for presence tracking
 let startTimestamp = new Date();
@@ -25,19 +43,61 @@ let lastActivity = null;
 let hasEverSetActivity = false;
 
 app.whenReady().then(() => {
-  tray = new Tray(path.join(__dirname, 'assets', 'icon.png'));
-  const menu = Menu.buildFromTemplate([
-    { label: 'Quit Figtime', click: () => app.quit() },
-  ]);
-  tray.setToolTip('Figtime is running');
-  tray.setContextMenu(menu);
+  // Only one FigTime at a time (e.g. relaunching or installing over a running copy)
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    return;
+  }
+
+  // Tray-only app: no Dock icon on macOS
+  if (process.platform === 'darwin') app.dock?.hide();
+
+  createTray();
 
   const autoLauncher = new AutoLaunch({ name: 'Figtime' });
-  autoLauncher.enable();
+  autoLauncher.enable().catch(console.error);
 
-  // Start Discord RPC connection
-  client.login({ clientId }).catch(console.error);
+  connectToDiscord();
 });
+
+// Connect to the local Discord client, retrying until Discord is running
+function connectToDiscord() {
+  clearTimeout(reconnectTimer);
+  const thisClient = new rpc.Client({ transport: "ipc" });
+  client = thisClient;
+
+  thisClient.on("ready", () => {
+    if (client !== thisClient) return;
+    connected = true;
+    lastActivity = null; // Force the current activity to be re-sent
+    console.log("✅ FigTime connected to Discord");
+    console.log(`[INFO] Running on ${process.platform === 'darwin' ? 'macOS' : process.platform === 'win32' ? 'Windows' : 'Linux'}`);
+    updatePresence();
+    if (!presenceTimer) presenceTimer = setInterval(updatePresence, 10000); // Check every 10 seconds
+  });
+
+  // Events from a client we've already replaced are ignored
+  thisClient.on("disconnected", () => {
+    if (client !== thisClient) return;
+    console.log("[⚠] Disconnected from Discord - will retry");
+    scheduleReconnect();
+  });
+
+  thisClient.login({ clientId }).catch(() => {
+    if (client !== thisClient) return;
+    console.log(`[⚠] Discord not available - retrying in ${RECONNECT_DELAY / 1000}s`);
+    scheduleReconnect();
+  });
+}
+
+function scheduleReconnect() {
+  connected = false;
+  clearTimeout(reconnectTimer);
+  const oldClient = client;
+  client = null;
+  oldClient?.destroy().catch(() => {});
+  reconnectTimer = setTimeout(connectToDiscord, RECONNECT_DELAY);
+}
 
 // Check if Figma processes are running
 async function isFigmaProcessRunning() {
@@ -64,57 +124,33 @@ async function isFigmaProcessRunning() {
 }
 
 // Check if any browser has Figma tabs
+// (looks at every open window, not just the focused one)
 async function hasFigmaBrowserTab() {
   try {
-    const { execSync } = await import('child_process');
-    let command;
-    
-    if (process.platform === 'win32') {
-      // Windows - use PowerShell to check window titles
-      command = 'powershell "Get-Process | Where-Object {$_.MainWindowTitle -ne \'\' -and $_.MainWindowTitle -like \'*figma*\'} | Select-Object ProcessName, MainWindowTitle"';
-    } else if (process.platform === 'darwin') {
-      // macOS - check running processes with figma
-      command = 'ps aux | grep -i figma | grep -v grep';
-    } else {
-      // Linux - use wmctrl or xdotool if available
-      command = 'wmctrl -l | grep -i figma || xdotool search --name figma 2>/dev/null || true';
-    }
-    
-    const result = execSync(command, { encoding: 'utf8', timeout: 5000 });
-    
-    // Platform-specific browser process names
-    let browserProcesses;
-    if (process.platform === 'darwin') {
-      browserProcesses = ['chrome', 'firefox', 'safari', 'edge', 'opera', 'brave', 'arc', 'google chrome', 'mozilla firefox'];
-    } else if (process.platform === 'win32') {
-      browserProcesses = ['chrome', 'firefox', 'edge', 'msedge', 'safari', 'opera', 'brave', 'iexplore'];
-    } else {
-      browserProcesses = ['chrome', 'firefox', 'chromium', 'safari', 'opera', 'brave', 'epiphany'];
-    }
-    
-    const lines = result.split('\n');
-    
-    for (const line of lines) {
-      const lowerLine = line.toLowerCase();
-      // Check if line contains both a browser name and figma
-      const hasBrowser = browserProcesses.some(browser => lowerLine.includes(browser));
-      const hasFigma = lowerLine.includes('figma');
-      
-      if (hasBrowser && hasFigma) {
-        return true;
-      }
-    }
-    
-    return false;
+    const windows = await openWindows();
+    return windows.some(isFigmaBrowser);
   } catch (error) {
-    // Fallback to checking current window
-    try {
-      const window = await activeWin();
-      return isFigmaBrowser(window);
-    } catch (fallbackError) {
-      return false;
-    }
+    return false;
   }
+}
+
+// Browser app names, matched against the window owner's name
+const BROWSER_NAMES =
+  process.platform === 'darwin'
+    ? ['chrome', 'firefox', 'safari', 'edge', 'opera', 'brave', 'arc']
+    : process.platform === 'win32'
+      ? ['chrome', 'firefox', 'edge', 'msedge', 'opera', 'brave']
+      : ['chrome', 'firefox', 'chromium', 'opera', 'brave', 'epiphany'];
+
+// Figma titles end in " – Figma" / " - Figma", optionally followed by
+// the browser/profile (e.g. "My file – Figma - Google Chrome",
+// "My file – Figma and 2 more pages - Personal - Microsoft Edge").
+// Requiring this suffix avoids matching pages that merely mention Figma.
+const FIGMA_TITLE_SUFFIX = /\s+[–—-]\s+Figma(\s+and\s+\d+\s+more\s+pages?)?(\s+[–—-]\s+.*)?\s*$/i;
+
+function isBrowserWindow(window) {
+  const appName = (window?.owner?.name || '').toLowerCase();
+  return BROWSER_NAMES.some(browser => appName.includes(browser));
 }
 
 // Check if window is Figma desktop app
@@ -125,50 +161,33 @@ function isFigmaDesktop(window) {
 
 // Check if window is browser with Figma tab
 function isFigmaBrowser(window) {
-  if (!window?.owner?.name) return false;
+  if (!isBrowserWindow(window)) return false;
 
-  const appName = window.owner.name.toLowerCase();
-  const url = (window.url || '').toLowerCase();
-  const title = (window.title || '').toLowerCase();
+  // macOS can also give us the tab URL
+  let hasFigmaUrl = false;
+  try {
+    const host = new URL(window.url || '').hostname;
+    hasFigmaUrl = host === 'figma.com' || host.endsWith('.figma.com');
+  } catch {}
 
-  // Browser names vary by platform
-  let browserNames;
-  if (process.platform === 'darwin') {
-    // macOS browser names
-    browserNames = ['chrome', 'firefox', 'safari', 'edge', 'opera', 'brave', 'arc', 'google chrome', 'mozilla firefox'];
-  } else if (process.platform === 'win32') {
-    // Windows browser names
-    browserNames = ['chrome', 'firefox', 'edge', 'msedge', 'safari', 'opera', 'brave', 'iexplore'];
-  } else {
-    // Linux browser names
-    browserNames = ['chrome', 'firefox', 'chromium', 'safari', 'opera', 'brave', 'epiphany'];
-  }
-
-  const isBrowser = browserNames.some(browser => appName.includes(browser));
-
-  // Check URL or title for figma.com
-  const hasFigmaUrl = url.includes('figma.com');
-  const hasFigmaTitle = title.includes('figma') || title.includes('- figma');
-  
-  return isBrowser && (hasFigmaUrl || hasFigmaTitle);
+  return hasFigmaUrl || FIGMA_TITLE_SUFFIX.test(window.title || '');
 }
+
+// Discord rejects "details" longer than 128 characters
+const MAX_DETAILS_LENGTH = 128;
 
 // Extract project name from window title
 function extractProjectName(title) {
-  if (!title) return 'Unknown Project';
-  
-  // Remove common Figma suffixes
-  let cleanTitle = title
-    .replace(/ – Figma$/i, '')
-    .replace(/ - Figma$/i, '')
-    .replace(/ - Figma - .+$/i, '') // Remove "- Figma - Browser Name"
-    .trim();
-  
-  return cleanTitle || 'Figma Project';
+  const cleanTitle = (title || '').replace(FIGMA_TITLE_SUFFIX, '').trim();
+  const name = cleanTitle || 'Figma Project';
+
+  const maxNameLength = MAX_DETAILS_LENGTH - 'Working on '.length;
+  return name.length > maxNameLength ? name.slice(0, maxNameLength - 1) + '…' : name;
 }
 
 // Main presence update function
 async function updatePresence() {
+  if (!connected) return; // Waiting for Discord; reconnect logic handles it
   try {
     const window = await activeWin();
 
@@ -227,7 +246,7 @@ async function updatePresence() {
 
       // Only update if activity changed
       if (lastActivity !== activityKey) {
-        client.setActivity(newActivity);
+        client.setActivity(newActivity).catch(console.error);
         console.log(`[✔] Updated: ${projectName} (${platform})`);
         lastActivity = activityKey;
         hasEverSetActivity = true;
@@ -255,20 +274,13 @@ async function updatePresence() {
 // Clear presence manually (call this when you want to clear)
 function clearPresence() {
   if (hasEverSetActivity) {
-    client.clearActivity();
+    if (connected) client.clearActivity().catch(() => {});
     console.log('[✔] Presence cleared');
     lastActivity = null;
     hasEverSetActivity = false;
   }
 }
 
-// Start the application
-client.on("ready", () => {
-  console.log("✅ FigTime connected to Discord");
-  console.log(`[INFO] Running on ${process.platform === 'darwin' ? 'macOS' : process.platform === 'win32' ? 'Windows' : 'Linux'}`);
-  updatePresence();
-  setInterval(updatePresence, 10000); // Check every 10 seconds
-});
 
 // Handle app events
 app.on('window-all-closed', () => {
@@ -279,7 +291,7 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (!tray || tray.isDestroyed()) {
-    tray = new Tray(path.join(__dirname, 'assets', 'icon.png'));
+    createTray();
   }
 });
 
