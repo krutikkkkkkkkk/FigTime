@@ -1,82 +1,98 @@
 name: Build FigTime App
 
-# Push to main -> build installers (downloadable from the run's artifacts)
-# Push a tag like v1.2.0 -> build installers AND publish a public GitHub Release
+# Push to main -> build (downloadable from the run's artifacts)
+# Push a tag like v2.0.0 -> build AND publish a public GitHub Release
 on:
   push:
     branches: [main]
     tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            script: dist:win
-          - os: macos-latest
-            script: dist:mac
-
+  windows:
+    runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+      - name: Test
+        run: cargo test
 
-      - name: Check tag matches package.json version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Build
+        run: cargo build --release
+
+      - name: Package
         shell: bash
         run: |
-          PKG_VERSION="v$(node -p "require('./package.json').version")"
-          if [ "$PKG_VERSION" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${PKG_VERSION}"
-            exit 1
-          fi
+          VERSION=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          mkdir dist
+          cp target/release/figtime.exe "dist/FigTime-${VERSION}-windows.exe"
+          ls -la dist
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build installers
-        run: npm run ${{ matrix.script }}
-
-      - name: Upload installers
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: figtime-${{ matrix.os }}
-          path: |
-            dist/*.exe
-            dist/*.dmg
+          name: figtime-windows
+          path: dist/*.exe
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Intel target
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test
+
+      - name: Build (Apple chip + Intel)
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+
+      - name: Package universal .app and .dmg
+        run: bash scripts/bundle-macos.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: figtime-macos
+          path: dist/*.dmg
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [windows, macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download installers
-        uses: actions/download-artifact@v4
+      - name: Check tag matches Cargo.toml version
+        run: |
+          VERSION="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
+          if [ "$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $VERSION"
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
         with:
-          path: installers
+          path: release
           merge-multiple: true
 
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" installers/* \
+          gh release create "$GITHUB_REF_NAME" release/* \
             --title "FigTime $GITHUB_REF_NAME" \
             --notes-file .github/release-notes.md \
             --generate-notes
